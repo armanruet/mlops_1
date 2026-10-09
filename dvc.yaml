@@ -1,0 +1,53 @@
+stages:
+  download:
+    cmd: python -m sentiment.prepare download
+    deps:
+      - src/sentiment/prepare.py
+      - src/sentiment/data.py
+    outs:
+      - data/raw
+
+  prepare:
+    cmd: python -m sentiment.prepare prepare
+    deps:
+      - data/raw
+      - src/sentiment/prepare.py
+      - src/sentiment/data.py
+    outs:
+      - data/processed
+
+  train:
+    cmd: python -m sentiment.train
+    deps:
+      - data/processed
+      - src/sentiment/train.py
+    params:
+      - train
+    outs:
+      - models/model.joblib
+      - models/run_info.json:
+          cache: false
+
+  evaluate:
+    cmd: python -m sentiment.evaluate
+    deps:
+      - data/processed/test.parquet
+      - models/model.joblib
+      - models/run_info.json
+      - src/sentiment/evaluate.py
+      - src/sentiment/gates.py
+    params:
+      - gates
+    metrics:
+      - reports/metrics.json:
+          cache: false
+    outs:
+      - reports/gates.json:
+          cache: false
+
+  register:
+    cmd: python -m sentiment.registry register
+    deps:
+      - reports/gates.json
+      - models/run_info.json
+      - src/sentiment/registry.py

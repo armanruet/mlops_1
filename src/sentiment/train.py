@@ -1,48 +1,51 @@
-"""Train the TF-IDF + Logistic Regression baseline."""
+"""Train the TF-IDF + Logistic Regression baseline and track it in MLflow."""
 
 import json
-from pathlib import Path
 
 import joblib
+import mlflow
+import mlflow.sklearn
+import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.pipeline import Pipeline
 
-from sentiment.data import load_split, validate
-
-MODEL_DIR = Path("models")
+from sentiment.config import MODEL_DIR, PROCESSED_DIR, load_params, setup_mlflow
 
 
-def build_pipeline() -> Pipeline:
+def build_pipeline(p: dict) -> Pipeline:
     return Pipeline(
         [
-            ("tfidf", TfidfVectorizer(ngram_range=(1, 2), min_df=3, max_features=200_000,
-                                      sublinear_tf=True)),
-            ("clf", LogisticRegression(max_iter=1000, C=4.0)),
+            ("tfidf", TfidfVectorizer(ngram_range=(1, p["ngram_max"]), min_df=p["min_df"],
+                                      max_features=p["max_features"], sublinear_tf=True)),
+            ("clf", LogisticRegression(max_iter=1000, C=p["C"])),
         ]
     )
 
 
 def main() -> None:
-    train, test = load_split("train"), load_split("test")
-    validate(train)
-    validate(test)
+    params = load_params()["train"]
+    train = pd.read_parquet(PROCESSED_DIR / "train.parquet")
 
-    pipe = build_pipeline()
-    pipe.fit(train["text"], train["label"])
-    preds = pipe.predict(test["text"])
+    setup_mlflow()
+    with mlflow.start_run(run_name="baseline-tfidf-logreg") as run:
+        mlflow.log_params(params)
+        mlflow.log_param("n_train", len(train))
+        mlflow.log_artifact(str(PROCESSED_DIR / "stats.json"), artifact_path="data")
 
-    metrics = {
-        "accuracy": float(accuracy_score(test["label"], preds)),
-        "macro_f1": float(f1_score(test["label"], preds, average="macro")),
-        "n_train": len(train),
-        "n_test": len(test),
-    }
-    MODEL_DIR.mkdir(exist_ok=True)
-    joblib.dump(pipe, MODEL_DIR / "model.joblib")
-    (MODEL_DIR / "metrics.json").write_text(json.dumps(metrics, indent=2))
-    print(metrics)
+        pipe = build_pipeline(params)
+        pipe.fit(train["text"], train["label"])
+        preds = pipe.predict(train["text"])
+        mlflow.log_metric("train_accuracy", float(accuracy_score(train["label"], preds)))
+        mlflow.log_metric("train_macro_f1",
+                          float(f1_score(train["label"], preds, average="macro")))
+        mlflow.sklearn.log_model(pipe, name="model", serialization_format="cloudpickle")
+
+        MODEL_DIR.mkdir(exist_ok=True)
+        joblib.dump(pipe, MODEL_DIR / "model.joblib")
+        (MODEL_DIR / "run_info.json").write_text(json.dumps({"run_id": run.info.run_id}))
+        print(f"Trained. MLflow run: {run.info.run_id}")
 
 
 if __name__ == "__main__":

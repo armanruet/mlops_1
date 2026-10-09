@@ -1,0 +1,14 @@
+train:
+  ngram_max: 2
+  min_df: 3
+  max_features: 200000
+  C: 4.0
+
+gates:
+  min_accuracy: 0.88
+  min_macro_f1: 0.88
+  min_class_recall: 0.85      # worst per-class recall
+  max_regression: 0.01        # allowed macro-F1 drop vs current champion
+
+registry:
+  model_name: sentiment-classifier

@@ -15,10 +15,15 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "pydantic-settings>=2.4",
+    "pyyaml>=6.0",
 ]
 
 [dependency-groups]
 dev = ["pytest>=8.0", "httpx>=0.27", "ruff>=0.6"]
+mlops = ["mlflow>=3.0", "dvc>=3.50"]
+
+[tool.uv]
+default-groups = ["dev", "mlops"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

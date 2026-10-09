@@ -6,9 +6,9 @@ __pycache__/
 .env
 node_modules/
 .next/
-data/raw/
-data/processed/
-models/
-mlruns/
 *.egg-info/
 .DS_Store
+mlruns/
+mlartifacts/
+mlflow.db
+dvc-remote/

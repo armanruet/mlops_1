@@ -23,5 +23,21 @@ Or with Docker (after training): `docker compose up --build`.
 - `web/` Next.js UI
 - `tests/` pytest
 
+## ML pipeline (M2)
+
+```bash
+uv run dvc repro                          # download -> prepare -> train -> evaluate -> register
+uv run dvc push                           # push data/models to the DVC remote (./dvc-remote)
+uv run python -m sentiment.registry status    # list versions + aliases
+uv run python -m sentiment.registry promote   # approve `candidate` -> `champion` (re-checks gates)
+uv run mlflow ui --backend-store-uri sqlite:///mlflow.db   # browse experiments/registry
+```
+
+- Params and quality-gate thresholds live in `params.yaml`.
+- Gates (`src/sentiment/gates.py`): min accuracy, min macro-F1, min per-class recall, and no
+  macro-F1 regression vs the current champion. Failing models are registered as `rejected`
+  with a `rejection_reason` tag and the `register` stage exits non-zero.
+- Aliases: `candidate` = passed gates, awaiting approval; `champion` = approved for serving.
+
 ## Roadmap
-M2 DVC + MLflow + quality gates · M3 CI + Control Center · M4 monitoring/drift · M5 feedback + retraining
+M3 CI + Control Center · M4 monitoring/drift · M5 feedback + retraining

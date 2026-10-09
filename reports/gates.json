@@ -1,0 +1,26 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "accuracy",
+      "value": 0.90592,
+      "threshold": 0.88,
+      "op": ">=",
+      "passed": true
+    },
+    {
+      "name": "macro_f1",
+      "value": 0.90592,
+      "threshold": 0.88,
+      "op": ">=",
+      "passed": true
+    },
+    {
+      "name": "min_class_recall",
+      "value": 0.90356,
+      "threshold": 0.85,
+      "op": ">=",
+      "passed": true
+    }
+  ]
+}
