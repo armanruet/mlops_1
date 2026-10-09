@@ -6,16 +6,18 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./models:/models:ro
+      - ./models/serving:/models/serving:ro
     environment:
-      MODEL_VERSION: baseline-v1
+      SERVING_DIR: /models/serving
       CORS_ORIGINS: http://localhost:3000
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-dev-admin-token}
 
   web:
     build:
       context: ./web
       args:
         NEXT_PUBLIC_API_URL: http://localhost:8000
+        NEXT_PUBLIC_CONTROL_URL: http://localhost:8001
     ports:
       - "3000:3000"
     depends_on:

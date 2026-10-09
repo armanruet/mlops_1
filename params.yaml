@@ -2,7 +2,7 @@ train:
   ngram_max: 2
   min_df: 3
   max_features: 200000
-  C: 4.0
+  C: 2.0
 
 gates:
   min_accuracy: 0.88

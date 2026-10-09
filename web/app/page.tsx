@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -36,7 +37,12 @@ export default function Home() {
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 py-16">
       <h1 className="text-3xl font-semibold">Movie review sentiment</h1>
-      <p className="text-zinc-500">Paste a review and classify it as positive or negative.</p>
+      <p className="text-zinc-500">
+        Paste a review and classify it as positive or negative.{" "}
+        <Link href="/control" className="underline">
+          MLOps Control Center
+        </Link>
+      </p>
 
       <textarea
         className="h-48 w-full rounded-lg border border-zinc-300 bg-transparent p-3 dark:border-zinc-700"

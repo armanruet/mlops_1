@@ -57,15 +57,15 @@ stages:
           ngram_max: 2
           min_df: 3
           max_features: 200000
-          C: 4.0
+          C: 2.0
     outs:
     - path: models/model.joblib
       hash: md5
-      md5: 6068a18e38bb8eb20c82080f742911e0
+      md5: a5d6aa9bdaa17bca9435252ec0666bfc
       size: 9626116
     - path: models/run_info.json
       hash: md5
-      md5: 71cdf0a8f2d9e4314dc1750ae8868c3a
+      md5: 45d70fbb165dc0ac66516dc6ee04522f
       size: 46
   evaluate:
     cmd: python -m sentiment.evaluate
@@ -76,11 +76,11 @@ stages:
       size: 19772386
     - path: models/model.joblib
       hash: md5
-      md5: 6068a18e38bb8eb20c82080f742911e0
+      md5: a5d6aa9bdaa17bca9435252ec0666bfc
       size: 9626116
     - path: models/run_info.json
       hash: md5
-      md5: 71cdf0a8f2d9e4314dc1750ae8868c3a
+      md5: 45d70fbb165dc0ac66516dc6ee04522f
       size: 46
     - path: src/sentiment/evaluate.py
       hash: md5
@@ -100,24 +100,24 @@ stages:
     outs:
     - path: reports/gates.json
       hash: md5
-      md5: bef47709bc5c184ff3945fee8b77733f
-      size: 427
+      md5: 17f647cd0553882ef07b39adf3be7b91
+      size: 574
     - path: reports/metrics.json
       hash: md5
-      md5: 6390d2b55b5f245860fba25b96d878d3
-      size: 131
+      md5: 6e66ee4e07e2c055b7b04135ed6ff8c9
+      size: 130
   register:
     cmd: python -m sentiment.registry register
     deps:
     - path: models/run_info.json
       hash: md5
-      md5: 71cdf0a8f2d9e4314dc1750ae8868c3a
+      md5: 45d70fbb165dc0ac66516dc6ee04522f
       size: 46
     - path: reports/gates.json
       hash: md5
-      md5: bef47709bc5c184ff3945fee8b77733f
-      size: 427
+      md5: 17f647cd0553882ef07b39adf3be7b91
+      size: 574
     - path: src/sentiment/registry.py
       hash: md5
-      md5: 7644662a3f6f3c70fda7502be27dd4cb
-      size: 4325
+      md5: 5ee5b5948798166a1d74aac1015b272c
+      size: 6169

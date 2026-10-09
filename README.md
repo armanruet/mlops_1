@@ -39,5 +39,23 @@ uv run mlflow ui --backend-store-uri sqlite:///mlflow.db   # browse experiments/
   with a `rejection_reason` tag and the `register` stage exits non-zero.
 - Aliases: `candidate` = passed gates, awaiting approval; `champion` = approved for serving.
 
+## Serving + Control Center (M3)
+
+Promotion exports the `champion` model to `models/serving/` (git-ignored), which the API serves.
+The API reloads it on `POST /admin/reload` (needs `X-Admin-Token`), so no redeploy is needed.
+
+```bash
+docker compose up --build -d     # inference API :8000 + web :3000
+ADMIN_TOKEN=dev-admin-token uv run uvicorn control.main:app --port 8001   # Control Center API
+```
+
+Open http://localhost:3000/control: Overview (serving vs champion, latest gates), Data & pipeline
+(dvc.lock hashes), Experiments (MLflow runs), Model registry (approve candidate -> champion).
+Approval requires the admin token (`ADMIN_TOKEN`, default `dev-admin-token` in compose; change it).
+The Control Center API runs on the host for now because MLflow stores absolute artifact paths;
+it moves into Compose with a proper MLflow server + Postgres in M4.
+
+CI (`.github/workflows/ci.yml`): ruff, pytest, `dvc dag`, web lint/build, Docker image builds.
+
 ## Roadmap
-M3 CI + Control Center · M4 monitoring/drift · M5 feedback + retraining
+M4 monitoring/drift (Prometheus, Grafana, Evidently) · M5 feedback + retraining

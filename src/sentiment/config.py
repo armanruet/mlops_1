@@ -9,6 +9,7 @@ MLFLOW_URI = "sqlite:///mlflow.db"
 EXPERIMENT = "imdb-sentiment"
 PROCESSED_DIR = Path("data/processed")
 MODEL_DIR = Path("models")
+SERVING_DIR = MODEL_DIR / "serving"
 REPORT_DIR = Path("reports")
 
 
