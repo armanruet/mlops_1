@@ -6,6 +6,7 @@ const NAV = [
   { href: "/control/experiments", label: "Experiments" },
   { href: "/control/registry", label: "Model registry" },
   { href: "/control/drift", label: "Drift" },
+  { href: "/control/feedback", label: "Feedback & retraining" },
 ];
 
 export default function ControlLayout({ children }: { children: React.ReactNode }) {

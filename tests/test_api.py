@@ -95,3 +95,25 @@ def test_predict_survives_logging_failure(client, monkeypatch):
     monkeypatch.setattr(db, "create_engine", lambda *a, **k: boom())
     # log_prediction swallows the failure, so the user still gets a prediction
     assert client.post("/predict", json={"text": "great wonderful movie"}).status_code == 200
+
+
+def test_feedback_endpoint(client, monkeypatch):
+    monkeypatch.setattr(api_main, "submit_feedback", lambda pred_id, label: 42)
+    r = client.post("/feedback", json={"prediction_id": 1, "label": "positive"})
+    assert r.status_code == 200
+    assert r.json() == {"ok": True, "feedback_id": 42}
+
+
+def test_feedback_endpoint_unknown_prediction(client, monkeypatch):
+    def not_found(*a):
+        raise LookupError("Prediction not found")
+
+    monkeypatch.setattr(api_main, "submit_feedback", not_found)
+    r = client.post("/feedback", json={"prediction_id": 999, "label": "positive"})
+    assert r.status_code == 404
+
+
+def test_feedback_endpoint_invalid_label(client):
+    r = client.post("/feedback", json={"prediction_id": 1, "label": "neutral"})
+    assert r.status_code == 422
+

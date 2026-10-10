@@ -42,6 +42,10 @@ stages:
   train:
     cmd: python -m sentiment.train
     deps:
+    - path: data/feedback/reviewed.parquet
+      hash: md5
+      md5: d831e9ebbf2faae9d3e102b357c97bbc
+      size: 16804
     - path: data/processed
       hash: md5
       md5: 26538ad26283dc230c79161fc7382173.dir
@@ -49,8 +53,8 @@ stages:
       nfiles: 3
     - path: src/sentiment/train.py
       hash: md5
-      md5: f22a39a839affe3a4db4f166f257c671
-      size: 1877
+      md5: cf8f6c70159f900ef0e93e9f974aec1a
+      size: 3152
     params:
       params.yaml:
         train:
@@ -61,11 +65,11 @@ stages:
     outs:
     - path: models/model.joblib
       hash: md5
-      md5: 5578ecf232c303ccc8c000c38ad84337
-      size: 9626116
+      md5: b6fbd296f45f463486684d94fe4d8487
+      size: 9625988
     - path: models/run_info.json
       hash: md5
-      md5: eddebff4c4e11c0c3fe3b8ca5061418b
+      md5: 750c55fb8943641a2aff860a8be58651
       size: 46
   evaluate:
     cmd: python -m sentiment.evaluate
@@ -76,16 +80,16 @@ stages:
       size: 19772386
     - path: models/model.joblib
       hash: md5
-      md5: 5578ecf232c303ccc8c000c38ad84337
-      size: 9626116
+      md5: b6fbd296f45f463486684d94fe4d8487
+      size: 9625988
     - path: models/run_info.json
       hash: md5
-      md5: eddebff4c4e11c0c3fe3b8ca5061418b
+      md5: 750c55fb8943641a2aff860a8be58651
       size: 46
     - path: src/sentiment/evaluate.py
       hash: md5
-      md5: 48de7742c04b288291261548db0996e0
-      size: 2137
+      md5: edb37a5998ce8f47a734637b9fcaaee9
+      size: 2347
     - path: src/sentiment/gates.py
       hash: md5
       md5: 0f72cbafcfd6e2e411afacb7a3f70867
@@ -100,24 +104,36 @@ stages:
     outs:
     - path: reports/gates.json
       hash: md5
-      md5: 4aea2b5ea40dda212d010dc0ce7ea14b
-      size: 427
+      md5: 8849e003e4414829d60024bd9b8b5ce6
+      size: 572
     - path: reports/metrics.json
       hash: md5
-      md5: 6e66ee4e07e2c055b7b04135ed6ff8c9
-      size: 130
+      md5: 2ba21349bfd07d08fab82c6fbe18c17b
+      size: 131
   register:
     cmd: python -m sentiment.registry register
     deps:
     - path: models/run_info.json
       hash: md5
-      md5: eddebff4c4e11c0c3fe3b8ca5061418b
+      md5: 750c55fb8943641a2aff860a8be58651
       size: 46
     - path: reports/gates.json
       hash: md5
-      md5: 4aea2b5ea40dda212d010dc0ce7ea14b
-      size: 427
+      md5: 8849e003e4414829d60024bd9b8b5ce6
+      size: 572
     - path: src/sentiment/registry.py
       hash: md5
       md5: 1cc5759eaf88428e8450467431be6bd1
       size: 6423
+  export_feedback:
+    cmd: python -m sentiment.retrain export
+    deps:
+    - path: src/sentiment/retrain.py
+      hash: md5
+      md5: 63f64686d1750cfa4ce577b07444eef9
+      size: 3895
+    outs:
+    - path: data/feedback/reviewed.parquet
+      hash: md5
+      md5: d831e9ebbf2faae9d3e102b357c97bbc
+      size: 16804

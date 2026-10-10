@@ -16,10 +16,19 @@ stages:
     outs:
       - data/processed
 
+  export_feedback:
+    cmd: python -m sentiment.retrain export
+    deps:
+      - src/sentiment/retrain.py
+    outs:
+      - data/feedback/reviewed.parquet:
+          cache: false
+
   train:
     cmd: python -m sentiment.train
     deps:
       - data/processed
+      - data/feedback/reviewed.parquet
       - src/sentiment/train.py
     params:
       - train

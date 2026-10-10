@@ -5,7 +5,12 @@ import { useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-type Prediction = { label: "positive" | "negative"; confidence: number; model_version: string };
+type Prediction = {
+  id?: number | null;
+  label: "positive" | "negative";
+  confidence: number;
+  model_version: string;
+};
 
 export default function Home() {
   const [text, setText] = useState("");
@@ -13,10 +18,15 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Feedback state
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState<string | null>(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+
   async function classify() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setFeedbackSubmitted(null);
     try {
       const res = await fetch(`${API_URL}/predict`, {
         method: "POST",
@@ -29,6 +39,27 @@ export default function Home() {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function sendFeedback(suggestedLabel: "positive" | "negative") {
+    if (!result?.id) return;
+    setFeedbackLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prediction_id: result.id, label: suggestedLabel }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail ?? `Error (${res.status})`);
+      }
+      setFeedbackSubmitted(`Feedback recorded as "${suggestedLabel}". Queued for human review!`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to submit feedback");
+    } finally {
+      setFeedbackLoading(false);
     }
   }
 
@@ -63,12 +94,52 @@ export default function Home() {
       {error && <p className="text-red-500">{error}</p>}
 
       {result && (
-        <section className="rounded-lg border border-zinc-300 p-4 dark:border-zinc-700">
-          <p className={`text-2xl font-semibold ${positive ? "text-green-600" : "text-red-600"}`}>
-            {result.label}
+        <section className="flex flex-col gap-4 rounded-lg border border-zinc-300 p-5 dark:border-zinc-700">
+          <div className="flex items-center justify-between">
+            <p className={`text-2xl font-semibold ${positive ? "text-green-600" : "text-red-600"}`}>
+              {result.label}
+            </p>
+            <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+              Model: {result.model_version}
+            </span>
+          </div>
+
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Confidence: {(result.confidence * 100).toFixed(1)}%
           </p>
-          <p>Confidence: {(result.confidence * 100).toFixed(1)}%</p>
-          <p className="text-sm text-zinc-500">Model: {result.model_version}</p>
+
+          {/* Feedback & Review Queue Integration */}
+          <div className="mt-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+            {feedbackSubmitted ? (
+              <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                ✓ {feedbackSubmitted}
+              </p>
+            ) : result.id ? (
+              <div className="flex flex-col gap-2">
+                <p className="text-xs text-zinc-500">
+                  Help improve the model: Was this classification correct?
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => sendFeedback(result.label)}
+                    disabled={feedbackLoading}
+                    className="rounded border border-zinc-300 px-3 py-1 text-xs hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                  >
+                    👍 Correct
+                  </button>
+                  <button
+                    onClick={() => sendFeedback(positive ? "negative" : "positive")}
+                    disabled={feedbackLoading}
+                    className="rounded border border-zinc-300 px-3 py-1 text-xs hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                  >
+                    👎 Incorrect (mark as {positive ? "negative" : "positive"})
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-zinc-400">Database logging inactive (no ID).</p>
+            )}
+          </div>
         </section>
       )}
     </main>

@@ -21,7 +21,8 @@ def champion_f1(client: MlflowClient, model_name: str) -> float | None:
     return client.get_run(mv.run_id).data.metrics.get("test_macro_f1")
 
 
-def main() -> None:
+def evaluate_model() -> tuple[dict, dict]:
+    """Run model evaluation and quality gates; return (metrics, gates_dict)."""
     params = load_params()
     test = pd.read_parquet(PROCESSED_DIR / "test.parquet")
     model = joblib.load(MODEL_DIR / "model.joblib")
@@ -50,8 +51,13 @@ def main() -> None:
         mlflow.log_metric("gates_passed", float(gate.passed))
         mlflow.log_artifact(str(REPORT_DIR / "gates.json"), artifact_path="evaluation")
 
+    return metrics, gate.to_dict()
+
+
+def main() -> None:
+    metrics, gate_dict = evaluate_model()
     print(json.dumps(metrics, indent=2))
-    for c in gate.checks:
+    for c in gate_dict["checks"]:
         print(("PASS" if c["passed"] else "FAIL"), c["name"], c["value"], c["op"], c["threshold"])
 
 

@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 from pydantic import BaseModel, Field
 
-from api.db import log_prediction
+from api.db import log_prediction, submit_feedback
 from sentiment.data import LABELS
 
 SERVING_DIR = Path(os.getenv("SERVING_DIR", "models/serving"))
@@ -93,9 +93,15 @@ class PredictRequest(BaseModel):
 
 
 class PredictResponse(BaseModel):
+    id: int | None = None
     label: str
     confidence: float
     model_version: str
+
+
+class FeedbackRequest(BaseModel):
+    prediction_id: int
+    label: str = Field(pattern="^(positive|negative)$")
 
 
 @app.get("/health")
@@ -137,5 +143,19 @@ def predict(req: PredictRequest, background: BackgroundTasks):
     PREDICTIONS.labels(label, version).inc()
     CONFIDENCE.observe(confidence)
     INPUT_CHARS.observe(len(req.text))
-    background.add_task(log_prediction, req.text, label, confidence, version)
-    return PredictResponse(label=label, confidence=confidence, model_version=version)
+    pred_id = log_prediction(req.text, label, confidence, version)
+    return PredictResponse(id=pred_id, label=label, confidence=confidence, model_version=version)
+
+
+@app.post("/feedback")
+def feedback(req: FeedbackRequest):
+    try:
+        fb_id = submit_feedback(req.prediction_id, req.label)
+        return {"ok": True, "feedback_id": fb_id}
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+

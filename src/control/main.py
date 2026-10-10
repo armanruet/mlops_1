@@ -17,9 +17,11 @@ from mlflow import MlflowClient
 from prometheus_client import CONTENT_TYPE_LATEST, Gauge, generate_latest
 from pydantic import BaseModel
 
+from api.db import feedback_stats, list_feedback, review_feedback
 from monitoring.drift import DRIFT_DIR, latest_summary, run_drift
 from sentiment.config import EXPERIMENT, PROCESSED_DIR, REPORT_DIR, load_params, setup_mlflow
 from sentiment.registry import promote_version
+from sentiment.retrain import run_retraining
 
 logger = logging.getLogger("control")
 
@@ -123,6 +125,11 @@ def overview():
         for mv in versions
         for a in aliases.get(str(mv.version), [])
     }
+    try:
+        fb_stats = feedback_stats()
+        fb_stats["threshold"] = load_params().get("retraining", {}).get("min_reviewed", 10)
+    except Exception:
+        fb_stats = None
     return {
         "serving": serving,
         "champion": by_alias.get("champion"),
@@ -132,6 +139,7 @@ def overview():
         "latest_metrics": _read_json(REPORT_DIR / "metrics.json"),
         "gate_thresholds": load_params()["gates"],
         "drift": latest_summary(),
+        "feedback": fb_stats,
     }
 
 
@@ -227,6 +235,61 @@ def drift_run(x_admin_token: str = Header(default="")):
     return _drift_job()
 
 
+@app.get("/control/feedback")
+def feedback_list(status: str = "pending", limit: int = 50):
+    try:
+        return list_feedback(status=status, limit=limit)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+class ReviewRequest(BaseModel):
+    decision: str
+    label: str | None = None
+
+
+@app.post("/control/feedback/{feedback_id}/review")
+def review(feedback_id: int, req: ReviewRequest, x_admin_token: str = Header(default="")):
+    if not ADMIN_TOKEN or not secrets.compare_digest(x_admin_token, ADMIN_TOKEN):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    try:
+        return review_feedback(
+            feedback_id, decision=req.decision, label=req.label, reviewer="admin"
+        )
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@app.get("/control/feedback/stats")
+def feedback_statistics():
+    try:
+        stats = feedback_stats()
+        stats["threshold"] = load_params().get("retraining", {}).get("min_reviewed", 10)
+        return stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+class RetrainRequest(BaseModel):
+    force: bool = False
+    min_reviewed: int | None = None
+
+
+@app.post("/control/retrain")
+async def retrain(req: RetrainRequest, x_admin_token: str = Header(default="")):
+    if not ADMIN_TOKEN or not secrets.compare_digest(x_admin_token, ADMIN_TOKEN):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    try:
+        return await asyncio.to_thread(
+            run_retraining, min_reviewed=req.min_reviewed, force=req.force
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Retraining failed: {e}") from e
+
+
 @app.get("/metrics", include_in_schema=False)
 def metrics():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+

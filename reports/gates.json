@@ -3,22 +3,29 @@
   "checks": [
     {
       "name": "accuracy",
-      "value": 0.90358,
+      "value": 0.90371,
       "threshold": 0.88,
       "op": ">=",
       "passed": true
     },
     {
       "name": "macro_f1",
-      "value": 0.90358,
+      "value": 0.9037,
       "threshold": 0.88,
       "op": ">=",
       "passed": true
     },
     {
       "name": "min_class_recall",
-      "value": 0.90024,
+      "value": 0.90065,
       "threshold": 0.85,
+      "op": ">=",
+      "passed": true
+    },
+    {
+      "name": "f1_vs_champion",
+      "value": 0.9037,
+      "threshold": 0.8935811037471079,
       "op": ">=",
       "passed": true
     }

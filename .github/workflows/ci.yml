@@ -19,7 +19,7 @@ jobs:
           enable-cache: true
       - run: uv sync --python 3.12
       - name: Lint
-        run: uv run ruff check src tests
+        run: uv run ruff check src tests scripts migrations
       - name: Unit tests (API, gates, cleaning)
         run: uv run pytest -q
       - name: Validate DVC pipeline definition

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { GateCheck, ModelVersion, useControl } from "@/lib/control";
 
 type Overview = {
@@ -10,6 +11,13 @@ type Overview = {
   latest_gates: { passed: boolean; checks: GateCheck[] } | null;
   latest_metrics: Record<string, number> | null;
   drift: { status: string; drift_share?: number; n_current?: number; generated_at?: string } | null;
+  feedback: {
+    pending: number;
+    approved: number;
+    rejected: number;
+    threshold?: number;
+    approved_since_last_retrain: number;
+  } | null;
 };
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
@@ -77,6 +85,35 @@ export default function OverviewPage() {
       <Card title="Registered versions">
         <p className="text-2xl font-semibold">{data.n_versions}</p>
       </Card>
+
+      <div className="sm:col-span-2">
+        <Card title="Reviewed feedback & retraining readiness">
+          {data.feedback ? (
+            <div className="flex flex-wrap items-center justify-between gap-4 text-sm">
+              <div>
+                <p>
+                  <span className="font-semibold">{data.feedback.pending}</span> pending reviews ·{" "}
+                  <span className="font-semibold text-green-600">{data.feedback.approved}</span> approved ·{" "}
+                  <span className="font-semibold text-red-600">{data.feedback.rejected}</span> rejected
+                </p>
+                <p className="text-xs text-zinc-500">
+                  {data.feedback.approved >= (data.feedback.threshold ?? 10)
+                    ? "✓ Retraining threshold met — ready to retrain"
+                    : `${data.feedback.approved} / ${data.feedback.threshold ?? 10} approved samples needed for scheduled retrain`}
+                </p>
+              </div>
+              <Link
+                href="/control/feedback"
+                className="rounded-full bg-foreground px-4 py-1.5 text-xs text-background"
+              >
+                Review queue & Retrain →
+              </Link>
+            </div>
+          ) : (
+            <p className="text-zinc-500">No feedback data recorded yet</p>
+          )}
+        </Card>
+      </div>
 
       <div className="sm:col-span-2">
         <Card title="Data drift (latest report)">

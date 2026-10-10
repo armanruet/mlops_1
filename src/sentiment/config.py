@@ -10,6 +10,7 @@ import yaml
 MLFLOW_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5001")
 EXPERIMENT = "imdb-sentiment"
 PROCESSED_DIR = Path("data/processed")
+FEEDBACK_DIR = Path("data/feedback")
 MODEL_DIR = Path("models")
 SERVING_DIR = MODEL_DIR / "serving"
 REPORT_DIR = Path("reports")

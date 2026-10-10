@@ -5,6 +5,8 @@ services:
       POSTGRES_USER: mlops
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mlops-dev-password}
       POSTGRES_DB: app
+    ports:
+      - "5433:5432"   # host 5433 (host 5432 may be used by local Postgres)
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -67,9 +69,9 @@ services:
     ports:
       - "8001:8000"
     volumes:
-      - ./models/serving:/app/models/serving
+      - ./models:/app/models
       - ./reports:/app/reports
-      - ./data/processed:/app/data/processed:ro
+      - ./data:/app/data
       - ./dvc.lock:/app/dvc.lock:ro
       - ./params.yaml:/app/params.yaml:ro
     environment:

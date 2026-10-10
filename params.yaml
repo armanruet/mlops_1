@@ -18,3 +18,7 @@ monitoring:
   min_samples: 30             # below this, report "insufficient_data"
   reference_size: 2000        # held-out test rows scored by the serving model
   drift_share_threshold: 0.4  # share of drifted columns that counts as dataset drift
+
+retraining:
+  min_reviewed: 10            # minimum approved feedback items required to trigger retraining
+

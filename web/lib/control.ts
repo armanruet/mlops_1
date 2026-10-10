@@ -41,3 +41,27 @@ export type ModelVersion = {
   tags: Record<string, string>;
   metrics: Record<string, number>;
 };
+
+export type FeedbackItem = {
+  id: number;
+  prediction_id: number;
+  text: string;
+  predicted_label: string;
+  confidence: number;
+  model_version: string;
+  user_label: string | null;
+  reviewed_label: string | null;
+  review_status: "pending" | "approved" | "rejected";
+  created_at: string | null;
+  reviewed_at: string | null;
+};
+
+export type FeedbackStats = {
+  pending: number;
+  approved: number;
+  rejected: number;
+  approved_since_last_retrain: number;
+  error_rate_by_version: Record<string, { reviewed: number; wrong: number; wrong_rate: number }>;
+  threshold?: number;
+};
+
