@@ -63,3 +63,35 @@ def test_reload_picks_up_new_export(client, monkeypatch, tmp_path):
     r = client.post("/admin/reload", headers={"X-Admin-Token": "secret"})
     assert r.status_code == 200 and r.json()["model_version"] == "v9"
     assert client.get("/model-info").json()["version"] == "9"
+    assert 'model_info{version="v9"} 1.0' in client.get("/metrics").text
+
+
+def test_metrics_exposed_after_predict(client):
+    client.post("/predict", json={"text": "great wonderful movie"})
+    body = client.get("/metrics").text
+    assert 'predictions_total{label="positive",model_version="v7"}' in body
+    assert 'http_requests_total{method="POST",path="/predict",status="200"}' in body
+    assert "prediction_confidence_bucket" in body
+
+
+def test_predict_logs_prediction(client, monkeypatch):
+    logged = []
+    monkeypatch.setattr(api_main, "log_prediction", lambda *a: logged.append(a))
+    client.post("/predict", json={"text": "great wonderful movie"})
+    assert len(logged) == 1
+    text, label, confidence, version = logged[0]
+    assert (text, label, version) == ("great wonderful movie", "positive", "v7")
+    assert 0.5 <= confidence <= 1.0
+
+
+def test_predict_survives_logging_failure(client, monkeypatch):
+    from api import db
+
+    def boom():
+        raise RuntimeError("db down")
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://x:y@localhost:1/none")
+    monkeypatch.setattr(db, "_engine", None)
+    monkeypatch.setattr(db, "create_engine", lambda *a, **k: boom())
+    # log_prediction swallows the failure, so the user still gets a prediction
+    assert client.post("/predict", json={"text": "great wonderful movie"}).status_code == 200

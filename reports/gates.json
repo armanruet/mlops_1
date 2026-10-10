@@ -21,13 +21,6 @@
       "threshold": 0.85,
       "op": ">=",
       "passed": true
-    },
-    {
-      "name": "f1_vs_champion",
-      "value": 0.90358,
-      "threshold": 0.8959210406530996,
-      "op": ">=",
-      "passed": true
     }
   ]
 }

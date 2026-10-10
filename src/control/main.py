@@ -1,25 +1,72 @@
-"""MLOps Control Center API: aggregates MLflow, DVC lineage, gate reports and serving state."""
+"""MLOps Control Center API: aggregates MLflow, DVC lineage, gate reports, drift and serving."""
 
+import asyncio
 import json
+import logging
 import os
 import secrets
 import urllib.request
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import yaml
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from mlflow import MlflowClient
+from prometheus_client import CONTENT_TYPE_LATEST, Gauge, generate_latest
 from pydantic import BaseModel
 
+from monitoring.drift import DRIFT_DIR, latest_summary, run_drift
 from sentiment.config import EXPERIMENT, PROCESSED_DIR, REPORT_DIR, load_params, setup_mlflow
 from sentiment.registry import promote_version
+
+logger = logging.getLogger("control")
 
 API_URL = os.getenv("API_URL", "http://localhost:8000")
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+DRIFT_INTERVAL_MIN = float(os.getenv("DRIFT_INTERVAL_MIN", "0"))  # 0 disables the schedule
 
-app = FastAPI(title="MLOps Control Center API", version="0.1.0")
+DRIFT_SHARE = Gauge("drift_share", "Share of monitored columns with detected drift")
+DRIFT_DETECTED = Gauge("drift_detected", "1 if dataset drift detected in the latest report")
+DRIFT_SAMPLES = Gauge("drift_current_samples", "Predictions in the latest drift window")
+
+
+def _publish_drift(summary: dict | None) -> None:
+    if not summary:
+        return
+    DRIFT_SAMPLES.set(summary.get("n_current", 0))
+    if summary["status"] in ("ok", "drift"):
+        DRIFT_SHARE.set(summary["drift_share"])
+        DRIFT_DETECTED.set(1 if summary["status"] == "drift" else 0)
+
+
+def _drift_job() -> dict:
+    summary = run_drift()
+    _publish_drift(summary)
+    return summary
+
+
+async def _drift_loop() -> None:
+    while True:
+        try:
+            await asyncio.to_thread(_drift_job)
+        except Exception:
+            logger.exception("Scheduled drift run failed")
+        await asyncio.sleep(DRIFT_INTERVAL_MIN * 60)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    _publish_drift(latest_summary())
+    task = asyncio.create_task(_drift_loop()) if DRIFT_INTERVAL_MIN > 0 else None
+    yield
+    if task:
+        task.cancel()
+
+
+app = FastAPI(title="MLOps Control Center API", version="0.2.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_methods=["*"],
                    allow_headers=["*"])
 
@@ -84,6 +131,7 @@ def overview():
         "latest_gates": _read_json(REPORT_DIR / "gates.json"),
         "latest_metrics": _read_json(REPORT_DIR / "metrics.json"),
         "gate_thresholds": load_params()["gates"],
+        "drift": latest_summary(),
     }
 
 
@@ -157,3 +205,28 @@ def promote(req: PromoteRequest, x_admin_token: str = Header(default="")):
         except Exception:
             result["reloaded"] = False
     return result
+
+
+@app.get("/control/drift")
+def drift():
+    return latest_summary() or {"status": "no_report"}
+
+
+@app.get("/control/drift/report", include_in_schema=False)
+def drift_report():
+    path = DRIFT_DIR / "latest.html"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="No drift report yet")
+    return FileResponse(path, media_type="text/html")
+
+
+@app.post("/control/drift/run")
+def drift_run(x_admin_token: str = Header(default="")):
+    if not ADMIN_TOKEN or not secrets.compare_digest(x_admin_token, ADMIN_TOKEN):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return _drift_job()
+
+
+@app.get("/metrics", include_in_schema=False)
+def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)

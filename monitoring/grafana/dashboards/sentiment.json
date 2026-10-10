@@ -1,0 +1,72 @@
+{
+  "uid": "sentiment-service",
+  "title": "Sentiment service & model health",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": {"from": "now-30m", "to": "now"},
+  "panels": [
+    {
+      "id": 1, "type": "timeseries", "title": "Request rate by status (req/s)",
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "legendFormat": "{{status}}",
+        "expr": "sum by (status) (rate(http_requests_total{job=\"api\"}[1m]))"}]
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "p95 /predict latency (s)",
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "targets": [{"refId": "A", "legendFormat": "p95",
+        "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{path=\"/predict\"}[1m])))"}]
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "Predictions by label (per s)",
+      "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "legendFormat": "{{label}}",
+        "expr": "sum by (label) (rate(predictions_total[1m]))"}]
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "Mean prediction confidence",
+      "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"min": 0.5, "max": 1}, "overrides": []},
+      "targets": [{"refId": "A", "legendFormat": "mean confidence",
+        "expr": "sum(rate(prediction_confidence_sum[2m])) / sum(rate(prediction_confidence_count[2m]))"}]
+    },
+    {
+      "id": 5, "type": "stat", "title": "Serving model version",
+      "gridPos": {"x": 0, "y": 16, "w": 6, "h": 5},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "options": {"textMode": "name", "reduceOptions": {"calcs": ["lastNotNull"], "values": false}},
+      "targets": [{"refId": "A", "legendFormat": "{{version}}", "expr": "model_info", "instant": true}]
+    },
+    {
+      "id": 6, "type": "gauge", "title": "Drifted columns share",
+      "gridPos": {"x": 6, "y": 16, "w": 6, "h": 5},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"min": 0, "max": 1, "thresholds": {"mode": "absolute",
+        "steps": [{"color": "green", "value": null}, {"color": "red", "value": 0.4}]}}, "overrides": []},
+      "targets": [{"refId": "A", "expr": "drift_share", "instant": true}]
+    },
+    {
+      "id": 7, "type": "stat", "title": "Dataset drift",
+      "gridPos": {"x": 12, "y": 16, "w": 6, "h": 5},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {
+        "mappings": [{"type": "value", "options": {
+          "0": {"text": "OK", "color": "green"}, "1": {"text": "DRIFT", "color": "red"}}}]},
+        "overrides": []},
+      "targets": [{"refId": "A", "expr": "drift_detected", "instant": true}]
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Mean input length (chars)",
+      "gridPos": {"x": 18, "y": 16, "w": 6, "h": 5},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "legendFormat": "chars",
+        "expr": "sum(rate(input_length_chars_sum[2m])) / sum(rate(input_length_chars_count[2m]))"}]
+    }
+  ]
+}

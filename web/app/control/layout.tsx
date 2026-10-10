@@ -5,6 +5,7 @@ const NAV = [
   { href: "/control/lineage", label: "Data & pipeline" },
   { href: "/control/experiments", label: "Experiments" },
   { href: "/control/registry", label: "Model registry" },
+  { href: "/control/drift", label: "Drift" },
 ];
 
 export default function ControlLayout({ children }: { children: React.ReactNode }) {
@@ -18,6 +19,17 @@ export default function ControlLayout({ children }: { children: React.ReactNode 
               {n.label}
             </Link>
           ))}
+        </nav>
+        <nav className="flex gap-4 text-sm text-zinc-500">
+          <a className="hover:underline" href="http://localhost:3001" target="_blank">
+            Grafana ↗
+          </a>
+          <a className="hover:underline" href="http://localhost:9090" target="_blank">
+            Prometheus ↗
+          </a>
+          <a className="hover:underline" href="http://localhost:5001" target="_blank">
+            MLflow ↗
+          </a>
         </nav>
         <Link href="/" className="ml-auto text-sm text-zinc-500 hover:underline">
           ← Classifier

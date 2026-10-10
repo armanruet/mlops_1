@@ -9,6 +9,7 @@ type Overview = {
   n_versions: number;
   latest_gates: { passed: boolean; checks: GateCheck[] } | null;
   latest_metrics: Record<string, number> | null;
+  drift: { status: string; drift_share?: number; n_current?: number; generated_at?: string } | null;
 };
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
@@ -76,6 +77,22 @@ export default function OverviewPage() {
       <Card title="Registered versions">
         <p className="text-2xl font-semibold">{data.n_versions}</p>
       </Card>
+
+      <div className="sm:col-span-2">
+        <Card title="Data drift (latest report)">
+          {!data.drift || data.drift.status === "no_report" ? (
+            <p className="text-zinc-500">No report yet</p>
+          ) : data.drift.status === "insufficient_data" ? (
+            <p className="text-amber-600">Not enough traffic yet ({data.drift.n_current} predictions)</p>
+          ) : (
+            <p className={data.drift.status === "drift" ? "text-red-600" : "text-green-600"}>
+              {data.drift.status === "drift" ? "Drift detected" : "No significant drift"} —{" "}
+              {((data.drift.drift_share ?? 0) * 100).toFixed(0)}% of columns drifted
+              <span className="text-zinc-500"> · {data.drift.generated_at}</span>
+            </p>
+          )}
+        </Card>
+      </div>
 
       <div className="sm:col-span-2">
         <Card title={`Latest quality gates — ${data.latest_gates?.passed ? "PASSED" : "FAILED"}`}>

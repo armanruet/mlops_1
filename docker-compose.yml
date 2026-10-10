@@ -1,4 +1,42 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mlops
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mlops-dev-password}
+      POSTGRES_DB: app
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlops -d app"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    command: >
+      mlflow server --host 0.0.0.0 --port 5000
+      --backend-store-uri postgresql+psycopg2://mlops:${POSTGRES_PASSWORD:-mlops-dev-password}@postgres:5432/mlflow
+      --artifacts-destination /mlartifacts --serve-artifacts
+      --default-artifact-root mlflow-artifacts:/
+      --allowed-hosts "*"
+    ports:
+      - "5001:5000"   # host 5001: macOS AirPlay Receiver occupies 5000
+    volumes:
+      - mlartifacts:/mlartifacts
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:5000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   api:
     build:
       context: .
@@ -11,6 +49,49 @@ services:
       SERVING_DIR: /models/serving
       CORS_ORIGINS: http://localhost:3000
       ADMIN_TOKEN: ${ADMIN_TOKEN:-dev-admin-token}
+      DATABASE_URL: postgresql+psycopg://mlops:${POSTGRES_PASSWORD:-mlops-dev-password}@postgres:5432/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  control:
+    build:
+      context: .
+      dockerfile: Dockerfile.control
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./models/serving:/app/models/serving
+      - ./reports:/app/reports
+      - ./data/processed:/app/data/processed:ro
+      - ./dvc.lock:/app/dvc.lock:ro
+      - ./params.yaml:/app/params.yaml:ro
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      API_URL: http://api:8000
+      CORS_ORIGINS: http://localhost:3000
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-dev-admin-token}
+      DRIFT_INTERVAL_MIN: ${DRIFT_INTERVAL_MIN:-15}
+      DATABASE_URL: postgresql+psycopg://mlops:${POSTGRES_PASSWORD:-mlops-dev-password}@postgres:5432/app
+    depends_on:
+      mlflow:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/metrics')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
 
   web:
     build:
@@ -22,3 +103,34 @@ services:
       - "3000:3000"
     depends_on:
       - api
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - promdata:/prometheus
+    depends_on:
+      - api
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  pgdata:
+  mlartifacts:
+  promdata:
+  grafanadata:

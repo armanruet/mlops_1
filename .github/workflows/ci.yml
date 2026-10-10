@@ -50,3 +50,9 @@ jobs:
         run: docker build -f Dockerfile.api -t sentiment-api:ci .
       - name: Build web image
         run: docker build -t sentiment-web:ci web
+      - name: Build Control Center image
+        run: docker build -f Dockerfile.control -t sentiment-control:ci .
+      - name: Build MLflow server image
+        run: docker build -f Dockerfile.mlflow -t sentiment-mlflow:ci .
+      - name: Validate compose file
+        run: docker compose config --quiet

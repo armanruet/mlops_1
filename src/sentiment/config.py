@@ -1,11 +1,13 @@
 """Shared config: params and MLflow setup."""
 
+import os
 from pathlib import Path
 
 import mlflow
 import yaml
 
-MLFLOW_URI = "sqlite:///mlflow.db"
+# Tracking/registry lives on the MLflow server started by docker compose.
+MLFLOW_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5001")
 EXPERIMENT = "imdb-sentiment"
 PROCESSED_DIR = Path("data/processed")
 MODEL_DIR = Path("models")

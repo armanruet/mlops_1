@@ -3,14 +3,17 @@
 import json
 import os
 import secrets
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import joblib
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 from pydantic import BaseModel, Field
 
+from api.db import log_prediction
 from sentiment.data import LABELS
 
 SERVING_DIR = Path(os.getenv("SERVING_DIR", "models/serving"))
@@ -19,6 +22,23 @@ ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")  # empty disables admin endpoints
 MAX_CHARS = 10_000
 
 state: dict = {}
+
+# --- Prometheus metrics -------------------------------------------------------
+HTTP_REQUESTS = Counter("http_requests_total", "HTTP requests", ["method", "path", "status"])
+HTTP_LATENCY = Histogram(
+    "http_request_duration_seconds", "HTTP request latency", ["path"],
+    buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5),
+)
+PREDICTIONS = Counter("predictions_total", "Predictions served", ["label", "model_version"])
+CONFIDENCE = Histogram(
+    "prediction_confidence", "Confidence of the predicted class",
+    buckets=(0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0),
+)
+INPUT_CHARS = Histogram(
+    "input_length_chars", "Length of classified text",
+    buckets=(50, 100, 250, 500, 1000, 2000, 4000, 10000),
+)
+MODEL_INFO = Gauge("model_info", "Currently served model version", ["version"])
 
 
 def load_serving_model() -> bool:
@@ -30,6 +50,8 @@ def load_serving_model() -> bool:
     info_file = SERVING_DIR / "serving.json"
     info = json.loads(info_file.read_text()) if info_file.exists() else {}
     state["model"], state["info"] = model, info
+    MODEL_INFO.clear()
+    MODEL_INFO.labels(version=model_version()).set(1)
     return True
 
 
@@ -45,9 +67,25 @@ async def lifespan(app: FastAPI):
     state.clear()
 
 
-app = FastAPI(title="Sentiment API", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title="Sentiment API", version="0.3.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_methods=["*"],
                    allow_headers=["*"])
+
+
+@app.middleware("http")
+async def record_metrics(request: Request, call_next):
+    start = time.perf_counter()
+    status = 500
+    try:
+        response = await call_next(request)
+        status = response.status_code
+        return response
+    finally:
+        # Use the route template (not the raw URL) to keep label cardinality bounded.
+        route = request.scope.get("route")
+        path = route.path if route else "unmatched"
+        HTTP_REQUESTS.labels(request.method, path, str(status)).inc()
+        HTTP_LATENCY.labels(path).observe(time.perf_counter() - start)
 
 
 class PredictRequest(BaseModel):
@@ -65,6 +103,11 @@ def health():
     return {"status": "ok", "model_loaded": "model" in state, "model_version": model_version()}
 
 
+@app.get("/metrics", include_in_schema=False)
+def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
 @app.get("/model-info")
 def model_info():
     return {"loaded": "model" in state, **state.get("info", {})}
@@ -80,7 +123,7 @@ def reload_model(x_admin_token: str = Header(default="")):
 
 
 @app.post("/predict", response_model=PredictResponse)
-def predict(req: PredictRequest):
+def predict(req: PredictRequest, background: BackgroundTasks):
     model = state.get("model")
     if model is None:
         raise HTTPException(status_code=503, detail="Model not loaded")
@@ -88,5 +131,11 @@ def predict(req: PredictRequest):
         raise HTTPException(status_code=422, detail="Text must not be blank")
     probs = model.predict_proba([req.text])[0]
     idx = int(probs.argmax())
-    return PredictResponse(label=LABELS[int(model.classes_[idx])], confidence=float(probs[idx]),
-                           model_version=model_version())
+    label = LABELS[int(model.classes_[idx])]
+    confidence, version = float(probs[idx]), model_version()
+
+    PREDICTIONS.labels(label, version).inc()
+    CONFIDENCE.observe(confidence)
+    INPUT_CHARS.observe(len(req.text))
+    background.add_task(log_prediction, req.text, label, confidence, version)
+    return PredictResponse(label=label, confidence=confidence, model_version=version)
