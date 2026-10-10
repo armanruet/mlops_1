@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 export const CONTROL_URL = process.env.NEXT_PUBLIC_CONTROL_URL ?? "http://localhost:8001";
 
@@ -64,4 +64,40 @@ export type FeedbackStats = {
   error_rate_by_version: Record<string, { reviewed: number; wrong: number; wrong_rate: number }>;
   threshold?: number;
 };
+
+export const DEFAULT_ADMIN_TOKEN = "dev-admin-token";
+
+function subscribe(callback: () => void) {
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
+
+function getSnapshot(): string {
+  try {
+    return localStorage.getItem("mlops_admin_token") ?? DEFAULT_ADMIN_TOKEN;
+  } catch {
+    return DEFAULT_ADMIN_TOKEN;
+  }
+}
+
+function getServerSnapshot(): string {
+  return DEFAULT_ADMIN_TOKEN;
+}
+
+export function useAdminToken() {
+  const token = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+  const setToken = (val: string) => {
+    try {
+      localStorage.setItem("mlops_admin_token", val);
+      window.dispatchEvent(new Event("storage"));
+    } catch {
+      // ignore
+    }
+  };
+
+  return [token, setToken] as const;
+}
+
+
 

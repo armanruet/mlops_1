@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CONTROL_URL, FeedbackItem, FeedbackStats, useControl } from "@/lib/control";
+import {
+  CONTROL_URL,
+  DEFAULT_ADMIN_TOKEN,
+  FeedbackItem,
+  FeedbackStats,
+  useAdminToken,
+  useControl,
+} from "@/lib/control";
 
 export default function FeedbackPage() {
   const { data: stats, refresh: refreshStats } = useControl<FeedbackStats>("/control/feedback/stats");
@@ -10,7 +17,8 @@ export default function FeedbackPage() {
   const { data: items, error: itemsError, loading: itemsLoading, refresh: refreshItems } =
     useControl<FeedbackItem[]>(`/control/feedback?status=${tab}`);
 
-  const [token, setToken] = useState("");
+  const [token, setToken] = useAdminToken();
+  const [showToken, setShowToken] = useState(false);
   const [force, setForce] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
@@ -33,14 +41,11 @@ export default function FeedbackPage() {
 
   async function handleReview(id: number, decision: "approve" | "reject", label?: string) {
     setActionMessage(null);
-    if (!token) {
-      setActionMessage("Admin token required to review feedback");
-      return;
-    }
+    const activeToken = token.trim() || DEFAULT_ADMIN_TOKEN;
     try {
       const res = await fetch(`${CONTROL_URL}/control/feedback/${id}/review`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Admin-Token": token },
+        headers: { "Content-Type": "application/json", "X-Admin-Token": activeToken },
         body: JSON.stringify({ decision, label }),
       });
       const body = await res.json().catch(() => ({}));
@@ -58,15 +63,12 @@ export default function FeedbackPage() {
   async function triggerRetrain() {
     setActionMessage(null);
     setRetrainResult(null);
-    if (!token) {
-      setActionMessage("Admin token required to trigger retraining");
-      return;
-    }
+    const activeToken = token.trim() || DEFAULT_ADMIN_TOKEN;
     setRetraining(true);
     try {
       const res = await fetch(`${CONTROL_URL}/control/retrain`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Admin-Token": token },
+        headers: { "Content-Type": "application/json", "X-Admin-Token": activeToken },
         body: JSON.stringify({ force }),
       });
       const body = await res.json().catch(() => ({}));
@@ -98,18 +100,41 @@ export default function FeedbackPage() {
     <div className="flex flex-col gap-8">
       {/* Admin Token Input */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex flex-wrap items-center gap-3 text-sm">
           <label htmlFor="token" className="font-medium">
             Admin token:
           </label>
-          <input
-            id="token"
-            type="password"
-            value={token}
-            placeholder="dev-admin-token"
-            onChange={(e) => setToken(e.target.value)}
-            className="rounded border border-zinc-300 bg-transparent px-3 py-1 font-mono text-sm dark:border-zinc-700"
-          />
+          <div className="flex items-center gap-1">
+            <input
+              id="token"
+              type={showToken ? "text" : "password"}
+              value={token}
+              placeholder={DEFAULT_ADMIN_TOKEN}
+              onChange={(e) => setToken(e.target.value)}
+              className="w-48 rounded border border-zinc-300 bg-transparent px-3 py-1 font-mono text-sm dark:border-zinc-700"
+            />
+            <button
+              type="button"
+              onClick={() => setShowToken(!showToken)}
+              className="rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            >
+              {showToken ? "Hide" : "Show"}
+            </button>
+          </div>
+          {token === DEFAULT_ADMIN_TOKEN && (
+            <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-950 dark:text-green-300">
+              ✓ Ready (dev default)
+            </span>
+          )}
+          {token !== DEFAULT_ADMIN_TOKEN && (
+            <button
+              type="button"
+              onClick={() => setToken(DEFAULT_ADMIN_TOKEN)}
+              className="text-xs text-zinc-500 underline hover:text-zinc-800 dark:hover:text-zinc-200"
+            >
+              Reset to dev default
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <button
