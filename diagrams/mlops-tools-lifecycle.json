@@ -1,0 +1,328 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Sentiment MLOps Toolchain Lifecycle Map",
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "core-lifecycle",
+        "label": "Core MLOps toolchain",
+        "focus": [
+          "tool_uv",
+          "tool_github",
+          "tool_dvc",
+          "tool_sklearn",
+          "tool_gates",
+          "tool_mlflow",
+          "tool_fastapi"
+        ],
+        "note": "Trace core lifecycle: uv env -> CI check -> DVC data -> Sklearn train -> Quality gates -> MLflow registry -> FastAPI serving."
+      },
+      {
+        "id": "ci-and-runtime",
+        "label": "CI/CD and serving infrastructure",
+        "focus": [
+          "tool_github",
+          "tool_docker",
+          "tool_fastapi",
+          "tool_nextjs"
+        ],
+        "note": "Trace automated CI verification, Docker Compose orchestration, FastAPI serving, and Next.js Control Center."
+      },
+      {
+        "id": "telemetry-loop",
+        "label": "State and telemetry surveillance",
+        "focus": [
+          "tool_fastapi",
+          "tool_postgres",
+          "tool_observability",
+          "tool_nextjs"
+        ],
+        "note": "Trace prediction logging in PostgreSQL, Prometheus metrics, and Evidently drift surveillance."
+      }
+    ],
+    "output": "diagrams/mlops-tools-lifecycle.html"
+  },
+  "lanes": [
+    { "id": "data_cicd", "label": "Code, CI/CD & Data Foundation" },
+    { "id": "model_governance", "label": "Model Training & Quality Gates" },
+    { "id": "serving_runtime", "label": "Container Serving & Control UI" },
+    { "id": "telemetry_store", "label": "State & Telemetry Surveillance" }
+  ],
+  "phases": [
+    {
+      "id": "phase_prep",
+      "label": "1. Environment & CI/CD",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "phase_train",
+      "label": "2. Data & Model Training",
+      "fromCol": 2,
+      "toCol": 3,
+      "variant": "emphasis"
+    },
+    {
+      "id": "phase_ops",
+      "label": "3. Serving & Telemetry",
+      "fromCol": 4,
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ],
+  "groups": [
+    {
+      "id": "group_foundation",
+      "label": "Data & CI/CD Foundation",
+      "lane": "data_cicd",
+      "fromCol": 0,
+      "toCol": 1,
+      "variant": "emphasis"
+    },
+    {
+      "id": "group_governance",
+      "label": "Model Governance Pipeline",
+      "lane": "model_governance",
+      "fromCol": 2,
+      "toCol": 3,
+      "variant": "emphasis"
+    },
+    {
+      "id": "group_serving",
+      "label": "Serving & Monitoring",
+      "lane": "serving_runtime",
+      "fromCol": 4,
+      "toCol": 5,
+      "variant": "security"
+    }
+  ],
+  "mainPath": [
+    "tool_uv",
+    "tool_github",
+    "tool_dvc",
+    "tool_sklearn",
+    "tool_gates",
+    "tool_mlflow",
+    "tool_fastapi"
+  ],
+  "nodes": [
+    {
+      "id": "tool_uv",
+      "lane": "data_cicd",
+      "col": 0,
+      "type": "backend",
+      "label": "uv / Python",
+      "sublabel": "env & uv.lock",
+      "tag": "M0 setup",
+      "width": 112
+    },
+    {
+      "id": "tool_github",
+      "lane": "data_cicd",
+      "col": 1,
+      "type": "external",
+      "label": "GitHub Actions",
+      "sublabel": "ruff & pytest",
+      "tag": "M3 CI/CD",
+      "width": 112
+    },
+    {
+      "id": "tool_docker",
+      "lane": "serving_runtime",
+      "col": 3,
+      "type": "cloud",
+      "label": "Docker Compose",
+      "sublabel": "compose stack",
+      "tag": "M1 stack",
+      "width": 112
+    },
+    {
+      "id": "tool_dvc",
+      "lane": "data_cicd",
+      "col": 2,
+      "type": "database",
+      "label": "DVC Pipeline",
+      "sublabel": "dvc.yaml data",
+      "tag": "M2 lineage",
+      "width": 112
+    },
+    {
+      "id": "tool_sklearn",
+      "lane": "model_governance",
+      "col": 2,
+      "type": "backend",
+      "label": "Scikit-Learn",
+      "sublabel": "TF-IDF + LR",
+      "tag": "M1 baseline",
+      "width": 112
+    },
+    {
+      "id": "tool_gates",
+      "lane": "model_governance",
+      "col": 3,
+      "type": "security",
+      "label": "Quality Gates",
+      "sublabel": "gate checks",
+      "tag": "M2 gate",
+      "width": 112
+    },
+    {
+      "id": "tool_mlflow",
+      "lane": "model_governance",
+      "col": 4,
+      "type": "database",
+      "label": "MLflow",
+      "sublabel": "@champion",
+      "tag": "M2-M3 registry",
+      "width": 112
+    },
+    {
+      "id": "tool_fastapi",
+      "lane": "serving_runtime",
+      "col": 4,
+      "type": "backend",
+      "label": "FastAPI",
+      "sublabel": "hot reload",
+      "tag": "M1 serving",
+      "width": 112
+    },
+    {
+      "id": "tool_postgres",
+      "lane": "telemetry_store",
+      "col": 4,
+      "type": "database",
+      "label": "PostgreSQL",
+      "sublabel": "Alembic db",
+      "tag": "M4-M5 store",
+      "width": 112
+    },
+    {
+      "id": "tool_nextjs",
+      "lane": "serving_runtime",
+      "col": 5,
+      "type": "frontend",
+      "label": "Next.js UI",
+      "sublabel": "Control UI",
+      "tag": "M3-M5 portal",
+      "width": 112
+    },
+    {
+      "id": "tool_observability",
+      "lane": "telemetry_store",
+      "col": 5,
+      "type": "messagebus",
+      "label": "Telemetry",
+      "sublabel": "Prom & Evidently",
+      "tag": "M4 telemetry",
+      "width": 112
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge_uv_github",
+      "from": "tool_uv",
+      "to": "tool_github",
+      "label": "uv lock & ci sync"
+    },
+    {
+      "id": "edge_github_dvc",
+      "from": "tool_github",
+      "to": "tool_dvc",
+      "label": "validate dvc dag",
+      "variant": "emphasis"
+    },
+    {
+      "id": "edge_github_docker",
+      "from": "tool_github",
+      "to": "tool_docker",
+      "label": "compose config"
+    },
+    {
+      "id": "edge_dvc_sklearn",
+      "from": "tool_dvc",
+      "to": "tool_sklearn",
+      "label": "dvc repro",
+      "variant": "emphasis"
+    },
+    {
+      "id": "edge_sklearn_gates",
+      "from": "tool_sklearn",
+      "to": "tool_gates",
+      "label": "evaluate model",
+      "variant": "emphasis"
+    },
+    {
+      "id": "edge_gates_mlflow",
+      "from": "tool_gates",
+      "to": "tool_mlflow",
+      "label": "passed candidate",
+      "variant": "emphasis"
+    },
+    {
+      "id": "edge_docker_fastapi",
+      "from": "tool_docker",
+      "to": "tool_fastapi",
+      "label": "run container",
+      "variant": "default"
+    },
+    {
+      "id": "edge_mlflow_fastapi",
+      "from": "tool_mlflow",
+      "to": "tool_fastapi",
+      "label": "export champion",
+      "variant": "emphasis"
+    },
+    {
+      "id": "edge_fastapi_nextjs",
+      "from": "tool_fastapi",
+      "to": "tool_nextjs",
+      "label": "serving & feedback"
+    },
+    {
+      "id": "edge_fastapi_postgres",
+      "from": "tool_fastapi",
+      "to": "tool_postgres",
+      "label": "log predictions",
+      "variant": "default"
+    },
+    {
+      "id": "edge_postgres_obs",
+      "from": "tool_postgres",
+      "to": "tool_observability",
+      "label": "drift & metrics",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Data & CI/CD Toolchain",
+      "items": [
+        "Astral uv guarantees reproducible sub-second Python dependency resolution",
+        "GitHub Actions runs ruff, pytest, dvc dag validation, and docker builds",
+        "DVC locks stage dependencies, code, and data hashes in dvc.lock"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Model Training & Registry Toolchain",
+      "items": [
+        "Scikit-learn fits TF-IDF n-grams with L2-regularized Logistic Regression",
+        "Pure-function quality gates enforce absolute F1 thresholds and regression caps",
+        "MLflow tracks experiment runs and promotes candidates via the champion alias"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Serving & Telemetry Toolchain",
+      "items": [
+        "Docker Compose manages the 7-container multi-network environment",
+        "FastAPI provides sub-second inference and zero-downtime hot reload",
+        "Next.js, PostgreSQL, Prometheus, and Evidently AI close the feedback loop"
+      ]
+    }
+  ]
+}

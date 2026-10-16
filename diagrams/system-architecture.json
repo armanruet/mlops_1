@@ -1,0 +1,252 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Sentiment MLOps System Architecture",
+    "output": "diagrams/system-architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "inference-path",
+        "label": "Inference and feedback path",
+        "focus": ["browser", "web_ui", "serving_api", "postgres", "model_store"],
+        "note": "Follow real-time sentiment scoring and async user feedback logging."
+      },
+      {
+        "id": "governance-path",
+        "label": "Control Center and model governance",
+        "focus": ["web_ui", "control_api", "mlflow", "postgres", "model_store", "serving_api"],
+        "note": "Trace feedback moderation, MLflow candidate promotion, and hot reload."
+      },
+      {
+        "id": "observability-path",
+        "label": "Observability and metrics stack",
+        "focus": ["serving_api", "prometheus", "grafana"],
+        "note": "Inspect Prometheus telemetry and Grafana dashboards."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "grafana",
+      "type": "frontend",
+      "label": "Grafana",
+      "sublabel": "dashboards :3001",
+      "brand": "grafana",
+      "pos": [40, 50],
+      "size": [130, 60]
+    },
+    {
+      "id": "prometheus",
+      "type": "messagebus",
+      "label": "Prometheus",
+      "sublabel": "metrics :9090",
+      "brand": "prometheus",
+      "pos": [250, 50],
+      "size": [140, 60]
+    },
+    {
+      "id": "model_store",
+      "type": "database",
+      "label": "Model Storage",
+      "sublabel": "models/serving volume",
+      "pos": [760, 50],
+      "size": [140, 60]
+    },
+    {
+      "id": "browser",
+      "type": "external",
+      "label": "Client Browser",
+      "sublabel": "Classifier & Control UI",
+      "pos": [40, 180],
+      "size": [130, 60]
+    },
+    {
+      "id": "web_ui",
+      "type": "frontend",
+      "label": "Next.js Frontend",
+      "sublabel": "web :3000",
+      "brand": "next-js",
+      "pos": [250, 180],
+      "size": [140, 60]
+    },
+    {
+      "id": "serving_api",
+      "type": "backend",
+      "label": "FastAPI Serving",
+      "sublabel": "api :8000",
+      "brand": "fastapi",
+      "pos": [500, 180],
+      "size": [140, 64]
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "PostgreSQL 16",
+      "sublabel": "app & mlflow DBs :5433",
+      "brand": "postgresql",
+      "pos": [760, 180],
+      "size": [140, 64]
+    },
+    {
+      "id": "control_api",
+      "type": "backend",
+      "label": "Control Center API",
+      "sublabel": "control :8001",
+      "brand": "fastapi",
+      "pos": [500, 310],
+      "size": [140, 64]
+    },
+    {
+      "id": "mlflow",
+      "type": "backend",
+      "label": "MLflow Server",
+      "sublabel": "mlflow :5001",
+      "pos": [760, 310],
+      "size": [140, 60]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Docker Compose Stack",
+      "wraps": [
+        "grafana",
+        "prometheus",
+        "web_ui",
+        "serving_api",
+        "control_api",
+        "model_store",
+        "postgres",
+        "mlflow"
+      ],
+      "pad": 20
+    },
+    {
+      "kind": "security-group",
+      "label": "Core App & Data Layer",
+      "wraps": [
+        "serving_api",
+        "control_api",
+        "model_store",
+        "postgres",
+        "mlflow"
+      ],
+      "pad": 14
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn_grafana_prom",
+      "from": "grafana",
+      "to": "prometheus",
+      "label": "PromQL :9090",
+      "variant": "emphasis"
+    },
+    {
+      "id": "conn_prom_serving",
+      "from": "prometheus",
+      "to": "serving_api",
+      "label": "scrape :8000",
+      "fromSide": "right",
+      "toSide": "top"
+    },
+    {
+      "id": "conn_browser_web",
+      "from": "browser",
+      "to": "web_ui",
+      "label": "HTTP :3000",
+      "variant": "emphasis"
+    },
+    {
+      "id": "conn_web_serving",
+      "from": "web_ui",
+      "to": "serving_api",
+      "label": "REST :8000",
+      "variant": "emphasis"
+    },
+    {
+      "id": "conn_web_control",
+      "from": "web_ui",
+      "to": "control_api",
+      "label": "admin UI",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "conn_serving_model",
+      "from": "serving_api",
+      "to": "model_store",
+      "label": "load champion",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "conn_serving_postgres",
+      "from": "serving_api",
+      "to": "postgres",
+      "label": "log predictions"
+    },
+    {
+      "id": "conn_control_reload",
+      "from": "control_api",
+      "to": "serving_api",
+      "label": "hot reload",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "conn_control_postgres",
+      "from": "control_api",
+      "to": "postgres",
+      "label": "review feedback",
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "conn_control_mlflow",
+      "from": "control_api",
+      "to": "mlflow",
+      "label": "registry status",
+      "labelDy": 20
+    },
+    {
+      "id": "conn_mlflow_postgres",
+      "from": "mlflow",
+      "to": "postgres",
+      "label": "backend store",
+      "fromSide": "top",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Serving & Data Flow",
+      "items": [
+        "FastAPI serves the local champion model with sub-second latency",
+        "Every inference is asynchronously logged to PostgreSQL for auditing",
+        "Users can submit corrections which queue safely in the app database"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Model Governance",
+      "items": [
+        "MLflow tracks experiment runs and registers candidate models",
+        "Quality gates strictly validate candidate macro-F1 against champion",
+        "Control Center API hot-reloads serving with zero downtime"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Observability & Drift",
+      "items": [
+        "Prometheus scrapes latency, confidence, and request rates",
+        "Evidently tests recent text features against baseline distributions",
+        "Grafana dashboards visualize real-time MLOps metrics and alerts"
+      ]
+    }
+  ]
+}

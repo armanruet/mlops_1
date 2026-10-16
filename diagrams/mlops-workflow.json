@@ -1,0 +1,217 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Sentiment MLOps Retraining and Delivery Workflow",
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "happy-path",
+        "label": "Feedback to live champion",
+        "focus": ["feedback_sub", "review_queue", "trigger_job", "dvc_repro", "gate_check", "promote_alias", "hot_reload"],
+        "note": "Follow user feedback through moderation, DVC pipeline, gates, and hot reload."
+      },
+      {
+        "id": "governance-stop",
+        "label": "Quality gate failure",
+        "focus": ["gate_check", "gate_reject"],
+        "note": "Isolate the blocking gate check and rejection tagging."
+      },
+      {
+        "id": "moderation-gate",
+        "label": "Human review queue",
+        "focus": ["feedback_sub", "review_queue", "trigger_job"],
+        "note": "Ensure untrusted user corrections never reach the model without review."
+      }
+    ],
+    "output": "diagrams/mlops-workflow.html"
+  },
+  "lanes": [
+    { "id": "users", "label": "User & Reviewer Surface" },
+    { "id": "control", "label": "Control Center & Trigger" },
+    { "id": "pipeline", "label": "DVC Retraining Pipeline" },
+    { "id": "policy", "label": "Policy & Quality Gates", "variant": "exception" },
+    { "id": "registry", "label": "MLflow Registry & Serving" }
+  ],
+  "phases": [
+    { "id": "intake", "label": "Capture & Review", "fromCol": 0, "toCol": 1 },
+    { "id": "retrain", "label": "Reproducible Retrain", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "promote", "label": "Gate & Hot Reload", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+  ],
+  "groups": [
+    { "id": "review_moderation", "label": "Human moderation", "lane": "users", "fromCol": 0, "toCol": 1, "variant": "emphasis" },
+    { "id": "repro_pipeline", "label": "DVC stage execution", "lane": "pipeline", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "gate_checks", "label": "Gate evaluation", "lane": "policy", "fromCol": 4, "toCol": 5, "variant": "security" }
+  ],
+  "mainPath": [
+    "feedback_sub",
+    "review_queue",
+    "trigger_job",
+    "dvc_repro",
+    "gate_check",
+    "promote_alias",
+    "hot_reload"
+  ],
+  "nodes": [
+    {
+      "id": "feedback_sub",
+      "lane": "users",
+      "col": 0,
+      "type": "external",
+      "label": "User Feedback",
+      "sublabel": "suggest label correction",
+      "width": 132
+    },
+    {
+      "id": "review_queue",
+      "lane": "users",
+      "col": 1,
+      "type": "frontend",
+      "label": "Review Decision",
+      "sublabel": "approve or relabel",
+      "tag": "anti-poisoning",
+      "width": 132
+    },
+    {
+      "id": "trigger_job",
+      "lane": "control",
+      "col": 2,
+      "type": "backend",
+      "label": "Retrain Trigger",
+      "sublabel": "UI or CLI (n >= 10)",
+      "tag": "threshold check",
+      "width": 132
+    },
+    {
+      "id": "dvc_repro",
+      "lane": "pipeline",
+      "col": 3,
+      "type": "backend",
+      "label": "DVC Pipeline",
+      "sublabel": "train & evaluate",
+      "tag": "dvc repro",
+      "width": 132
+    },
+    {
+      "id": "gate_check",
+      "lane": "policy",
+      "col": 4,
+      "type": "security",
+      "label": "Quality Gates",
+      "sublabel": "F1 >= 0.88, no drop",
+      "tag": "blocking",
+      "width": 132
+    },
+    {
+      "id": "gate_reject",
+      "lane": "policy",
+      "col": 5,
+      "type": "security",
+      "label": "Reject Candidate",
+      "sublabel": "status: rejected",
+      "tag": "stop deployment",
+      "width": 132
+    },
+    {
+      "id": "promote_alias",
+      "lane": "registry",
+      "col": 4,
+      "type": "backend",
+      "label": "Promote Champion",
+      "sublabel": "set alias @champion",
+      "tag": "audit log",
+      "width": 132
+    },
+    {
+      "id": "hot_reload",
+      "lane": "registry",
+      "col": 5,
+      "type": "cloud",
+      "label": "Zero-Downtime Reload",
+      "sublabel": "POST /admin/reload",
+      "tag": "serving live",
+      "width": 132
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge_sub_queue",
+      "from": "feedback_sub",
+      "to": "review_queue",
+      "label": "POST /feedback"
+    },
+    {
+      "id": "edge_queue_trigger",
+      "from": "review_queue",
+      "to": "trigger_job",
+      "label": "approved pool",
+      "variant": "emphasis"
+    },
+    {
+      "id": "edge_trigger_dvc",
+      "from": "trigger_job",
+      "to": "dvc_repro",
+      "label": "export & train",
+      "variant": "emphasis"
+    },
+    {
+      "id": "edge_dvc_gates",
+      "from": "dvc_repro",
+      "to": "gate_check",
+      "label": "metrics.json",
+      "variant": "emphasis"
+    },
+    {
+      "id": "edge_gates_promote",
+      "from": "gate_check",
+      "to": "promote_alias",
+      "label": "passed gates",
+      "variant": "emphasis"
+    },
+    {
+      "id": "edge_gates_reject",
+      "from": "gate_check",
+      "to": "gate_reject",
+      "label": "regression",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "edge_promote_reload",
+      "from": "promote_alias",
+      "to": "hot_reload",
+      "label": "export champion",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Human-in-the-Loop Safeguard",
+      "items": [
+        "Unverified user suggestions land in a pending database queue",
+        "Control Center operators verify or correct sentiment labels",
+        "Retraining unlocks only when the reviewed threshold is reached"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Automated Quality Gates",
+      "items": [
+        "Candidates must achieve >= 0.88 accuracy and >= 0.88 macro-F1",
+        "Macro-F1 regression against current champion is capped at 0.01",
+        "Failing candidates are tagged rejected with failure reasons"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Seamless Promotion & Serving",
+      "items": [
+        "Approval assigns the champion alias in the MLflow registry",
+        "The model is exported to disk and reloaded into memory hot",
+        "Continuous zero-downtime serving guarantees no dropped traffic"
+      ]
+    }
+  ]
+}

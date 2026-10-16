@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentiment MLOps — Architecture & Workflow Diagrams</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(255, 255, 255, 0.03);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-hover: rgba(56, 189, 248, 0.15);
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent-cyan: #38bdf8;
+      --accent-emerald: #34d399;
+      --accent-purple: #c084fc;
+      --accent-amber: #fbbf24;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: radial-gradient(circle at 50% 0%, #1e293b 0%, var(--bg) 70%);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1.5rem;
+    }
+    header {
+      max-width: 900px;
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background: rgba(56, 189, 248, 0.1);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      margin-bottom: 1rem;
+    }
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.75rem;
+      background: linear-gradient(to right, #ffffff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p.lead {
+      font-size: 1.125rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 1.5rem;
+      max-width: 1100px;
+      width: 100%;
+      margin-bottom: 3rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 1rem;
+      padding: 2rem;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: var(--card-hover);
+      box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.5), 0 0 20px -5px rgba(56, 189, 248, 0.2);
+    }
+    .card-tag {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .card-tag.cyan { color: var(--accent-cyan); }
+    .card-tag.emerald { color: var(--accent-emerald); }
+    .card-tag.purple { color: var(--accent-purple); }
+    .card-tag.amber { color: var(--accent-amber); }
+    .card-tag.blue { color: #60a5fa; }
+    .card h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+    .card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+      flex-grow: 1;
+    }
+    .features {
+      list-style: none;
+      font-size: 0.825rem;
+      color: #cbd5e1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-bottom: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .features li {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .features li::before {
+      content: "•";
+      color: var(--accent-cyan);
+      font-weight: bold;
+    }
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--accent-cyan);
+    }
+    .card-footer span.arrow {
+      transition: transform 0.2s ease;
+    }
+    .card:hover .card-footer span.arrow {
+      transform: translateX(4px);
+    }
+    footer {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--card-border);
+      max-width: 900px;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="badge">Archify Showcase Suite</div>
+    <h1>Sentiment MLOps Architecture & Flows</h1>
+    <p class="lead">Interactive, self-contained architecture, workflow, data flow, and lifecycle diagrams covering the complete engineering milestones (M0 through M5).</p>
+  </header>
+
+  <main class="grid">
+    <!-- Architecture -->
+    <a href="./system-architecture.html" class="card">
+      <div class="card-tag cyan">System Architecture</div>
+      <h2>Microservices & Deployment Stack</h2>
+      <p>Multi-tier containerized topology orchestrating the Next.js frontend, FastAPI inference & Control APIs, PostgreSQL dual-database, MLflow server, Prometheus, and Grafana.</p>
+      <ul class="features">
+        <li>Docker Compose boundary and application network isolation</li>
+        <li>Zero-downtime hot-reload signaling path via API token</li>
+        <li>Asynchronous PostgreSQL prediction and feedback audit logging</li>
+      </ul>
+      <div class="card-footer">
+        <span>Explore Architecture</span>
+        <span class="arrow">→</span>
+      </div>
+    </a>
+
+    <!-- Workflow -->
+    <a href="./mlops-workflow.html" class="card">
+      <div class="card-tag emerald">Workflow (Schema v2)</div>
+      <h2>Continuous Retraining & Governance</h2>
+      <p>Human-in-the-loop workflow connecting user feedback suggestions, moderation review, DVC pipeline reproduction, strict quality gates, champion promotion, and live hot reload.</p>
+      <ul class="features">
+        <li>Anti-poisoning human verification queue before retraining</li>
+        <li>Automated quality gates checking macro-F1 & regression limits</li>
+        <li>Clear rejection path tagging failing candidates in MLflow</li>
+      </ul>
+      <div class="card-footer">
+        <span>Explore Workflow</span>
+        <span class="arrow">→</span>
+      </div>
+    </a>
+
+    <!-- Dataflow -->
+    <a href="./mlops-dataflow.html" class="card">
+      <div class="card-tag purple">Data Flow & Lineage</div>
+      <h2>End-to-End Pipeline & Drift Lineage</h2>
+      <p>Data asset lineage across 5 stages from raw HuggingFace Stanford IMDB text and human feedback through TF-IDF modeling to live prediction audit logs and Evidently drift reports.</p>
+      <ul class="features">
+        <li>DVC-tracked dataset hashing and reproducible parquet splits</li>
+        <li>Seamless fusion of reviewed feedback with base training data</li>
+        <li>Scheduled Evidently AI surveillance for text feature and score drift</li>
+      </ul>
+      <div class="card-footer">
+        <span>Explore Data Flow</span>
+        <span class="arrow">→</span>
+      </div>
+    </a>
+
+    <!-- Lifecycle -->
+    <a href="./mlops-lifecycle.html" class="card">
+      <div class="card-tag amber">Lifecycle & Governance</div>
+      <h2>Model Milestone State Machine (M0–M5)</h2>
+      <p>Formal state machine visualizing model progression from M0 environment setup and M1 baseline to M2 quality gates, M3 candidate promotion, M4 drift monitoring, and M5 feedback retraining.</p>
+      <ul class="features">
+        <li>Ordered 5-milestone primary rail from dataset to champion</li>
+        <li>Non-terminal observation and review wait states</li>
+        <li>Clean retirement tagging when newer champions take over</li>
+      </ul>
+      <div class="card-footer">
+        <span>Explore Lifecycle</span>
+        <span class="arrow">→</span>
+      </div>
+    </a>
+
+    <!-- MLOps Tools Lifecycle -->
+    <a href="./mlops-tools-lifecycle.html" class="card">
+      <div class="card-tag blue">MLOps Toolchain Map</div>
+      <h2>End-to-End Toolchain Lifecycle</h2>
+      <p>Comprehensive lifecycle map connecting all 12 project tools (uv, GitHub Actions, DVC, Scikit-Learn, Quality Gates, MLflow, Docker Compose, FastAPI, Next.js, PostgreSQL, Prometheus/Grafana, Evidently) across M0–M5 milestones.</p>
+      <ul class="features">
+        <li>Phased spans: Foundation & Versioning, Model & Serving, Observability & Feedback</li>
+        <li>Full traceability across dependencies, pipeline caching, and registry aliases</li>
+        <li>Closed-loop retraining triggering DVC pipeline from human-reviewed PostgreSQL data</li>
+      </ul>
+      <div class="card-footer">
+        <span>Explore Toolchain Map</span>
+        <span class="arrow">→</span>
+      </div>
+    </a>
+  </main>
+
+  <footer>
+    <p>Sentiment MLOps — Built with Archify 2.16.0 • Compliant with 9/9 automated composition checks</p>
+  </footer>
+</body>
+</html>

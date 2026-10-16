@@ -1,0 +1,191 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Sentiment MLOps Model and Governance Lifecycle",
+    "output": "diagrams/mlops-lifecycle.html",
+    "viewBox": [980, 680],
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "delivery-rail",
+        "label": "Model delivery rail (M0-M3)",
+        "focus": ["dataset", "training", "evaluation", "candidate", "champion"],
+        "note": "Follow the primary lifecycle from data ingestion to active serving champion."
+      },
+      {
+        "id": "gate-failure",
+        "label": "Quality gate rejection",
+        "focus": ["evaluation", "rejected_gate"],
+        "note": "Isolate the blocking gate check and rejection tagging."
+      },
+      {
+        "id": "feedback-retraining",
+        "label": "Feedback and retraining loop (M4-M5)",
+        "focus": ["champion", "drift_detected", "feedback_queue", "training", "retired_model"],
+        "note": "Trace production drift, human review, continuous retraining, and retirement."
+      }
+    ]
+  },
+  "lanes": [
+    { "id": "main", "label": "Model Delivery Milestones (M0-M3)" },
+    { "id": "monitoring", "label": "Continuous Observation & Feedback (M4-M5)" },
+    { "id": "terminal", "label": "Terminal Exits & Retirement" }
+  ],
+  "states": [
+    {
+      "id": "dataset",
+      "type": "start",
+      "label": "Dataset & Env",
+      "sublabel": "M0 stanfordnlp/imdb",
+      "lane": "main",
+      "col": 0,
+      "step": "01",
+      "tag": "M0 baseline"
+    },
+    {
+      "id": "training",
+      "type": "active",
+      "label": "Training Run",
+      "sublabel": "M1 TF-IDF pipeline",
+      "lane": "main",
+      "col": 1,
+      "step": "02",
+      "tag": "M1 train"
+    },
+    {
+      "id": "evaluation",
+      "type": "decision",
+      "label": "Quality Gates",
+      "sublabel": "M2 macro-F1 >= 0.88",
+      "lane": "main",
+      "col": 2,
+      "step": "03",
+      "tag": "M2 gates"
+    },
+    {
+      "id": "candidate",
+      "type": "waiting",
+      "label": "Candidate Model",
+      "sublabel": "M3 awaits approval",
+      "lane": "main",
+      "col": 3,
+      "step": "04",
+      "tag": "M3 review"
+    },
+    {
+      "id": "champion",
+      "type": "success",
+      "label": "Champion Serving",
+      "sublabel": "M3 hot reloaded",
+      "lane": "main",
+      "col": 4,
+      "step": "05",
+      "tag": "M3 active"
+    },
+    {
+      "id": "feedback_queue",
+      "type": "waiting",
+      "label": "Feedback Queue",
+      "sublabel": "M5 human review",
+      "lane": "monitoring",
+      "col": 1,
+      "tag": "human gate"
+    },
+    {
+      "id": "drift_detected",
+      "type": "waiting",
+      "label": "Drift Surveillance",
+      "sublabel": "M4 Evidently stats",
+      "lane": "monitoring",
+      "col": 2,
+      "tag": "observed"
+    },
+    {
+      "id": "rejected_gate",
+      "type": "failure",
+      "label": "Gate Rejected",
+      "sublabel": "macro-F1 regression",
+      "lane": "terminal",
+      "col": 0,
+      "tag": "blocked"
+    },
+    {
+      "id": "retired_model",
+      "type": "neutral",
+      "label": "Retired Champion",
+      "sublabel": "M3 superseded alias",
+      "lane": "terminal",
+      "col": 2,
+      "tag": "archived"
+    }
+  ],
+  "transitions": [
+    {
+      "id": "gate_failed",
+      "from": "evaluation",
+      "to": "rejected_gate",
+      "variant": "security",
+      "route": "straight",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "candidate_feedback",
+      "from": "candidate",
+      "to": "feedback_queue",
+      "variant": "dashed",
+      "route": "straight",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "champion_drift",
+      "from": "champion",
+      "to": "drift_detected",
+      "variant": "default",
+      "route": "straight",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "drift_retire",
+      "from": "drift_detected",
+      "to": "retired_model",
+      "variant": "dashed",
+      "route": "straight",
+      "fromSide": "bottom",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Delivery Rail (M0-M3)",
+      "items": [
+        "Models advance through five formal milestones from dataset to serving",
+        "Deterministic evaluation verifies quality gates before approval",
+        "Champion alias denotes the single active model serving traffic"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Observation & Gates (M4-M5)",
+      "items": [
+        "Quality gate failure stops promotion and records rejection tags",
+        "Evidently surveillance tracks dataset drift on active predictions",
+        "User feedback stays isolated in pending status until human review"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Retraining & Lifecycle (M5)",
+      "items": [
+        "Threshold of 10 approved feedback items unlocks continuous retraining",
+        "Promoting a new candidate cleanly tags the prior champion as retired",
+        "Hot reload provides zero-downtime transition between model generations"
+      ]
+    }
+  ]
+}

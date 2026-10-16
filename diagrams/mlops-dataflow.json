@@ -1,0 +1,238 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Sentiment MLOps End-to-End Data Flow & Lineage",
+    "output": "diagrams/mlops-dataflow.html",
+    "viewBox": [1080, 760],
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "training-pipeline",
+        "label": "Raw dataset to model candidate",
+        "focus": ["imdb_raw", "clean_splits", "model_train", "eval_gates", "mlflow_candidate"],
+        "note": "Follow raw text preprocessing, feedback merge, TF-IDF training, and gate validation."
+      },
+      {
+        "id": "serving-monitoring",
+        "label": "Serving, audit log, and drift",
+        "focus": ["serving_model", "predictions_log", "drift_report"],
+        "note": "Trace production inferences into PostgreSQL and scheduled Evidently drift checks."
+      },
+      {
+        "id": "feedback-retraining",
+        "label": "Reviewed feedback loop",
+        "focus": ["user_feedback", "reviewed_feedback", "model_train"],
+        "note": "See human-verified user corrections augment training data for next retraining."
+      }
+    ]
+  },
+  "stages": [
+    { "label": "Sources" },
+    { "label": "Prepare" },
+    { "label": "Train" },
+    { "label": "Gate & Register" },
+    { "label": "Serve & Monitor" }
+  ],
+  "nodes": [
+    {
+      "id": "imdb_raw",
+      "type": "external",
+      "label": "Stanford IMDB",
+      "sublabel": "data/raw parquet",
+      "stage": 0,
+      "row": 0,
+      "tag": "base corpus"
+    },
+    {
+      "id": "user_feedback",
+      "type": "frontend",
+      "label": "User Feedback",
+      "sublabel": "POST /feedback",
+      "stage": 0,
+      "row": 2,
+      "tag": "corrections"
+    },
+    {
+      "id": "clean_splits",
+      "type": "database",
+      "label": "Clean Splits",
+      "sublabel": "train/test parquet",
+      "stage": 1,
+      "row": 0,
+      "tag": "DVC tracked"
+    },
+    {
+      "id": "reviewed_feedback",
+      "type": "security",
+      "label": "Approved Feedback",
+      "sublabel": "reviewed.parquet",
+      "stage": 1,
+      "row": 2,
+      "tag": "human audited"
+    },
+    {
+      "id": "model_train",
+      "type": "backend",
+      "label": "TF-IDF Classifier",
+      "sublabel": "models/model.joblib",
+      "stage": 2,
+      "row": 1,
+      "tag": "ngram=2 C=2.0"
+    },
+    {
+      "id": "eval_gates",
+      "type": "security",
+      "label": "Quality Gates",
+      "sublabel": "metrics & gates.json",
+      "stage": 3,
+      "row": 0,
+      "tag": "F1 >= 0.88"
+    },
+    {
+      "id": "mlflow_candidate",
+      "type": "backend",
+      "label": "MLflow Registry",
+      "sublabel": "candidate alias",
+      "stage": 3,
+      "row": 2,
+      "tag": "model version"
+    },
+    {
+      "id": "serving_model",
+      "type": "cloud",
+      "label": "FastAPI Serving",
+      "sublabel": "/predict endpoint",
+      "stage": 4,
+      "row": 0,
+      "tag": "hot loaded"
+    },
+    {
+      "id": "predictions_log",
+      "type": "database",
+      "label": "Prediction Log",
+      "sublabel": "PostgreSQL store",
+      "stage": 4,
+      "row": 2,
+      "tag": "audit history"
+    },
+    {
+      "id": "drift_report",
+      "type": "backend",
+      "label": "Evidently Drift",
+      "sublabel": "feature & score drift",
+      "stage": 4,
+      "row": 4,
+      "tag": "alert metrics"
+    }
+  ],
+  "flows": [
+    {
+      "id": "flow_raw_prep",
+      "from": "imdb_raw",
+      "to": "clean_splits",
+      "label": "clean text",
+      "classification": "raw corpus",
+      "route": "straight",
+      "variant": "emphasis"
+    },
+    {
+      "id": "flow_feedback_review",
+      "from": "user_feedback",
+      "to": "reviewed_feedback",
+      "label": "verify label",
+      "classification": "human review",
+      "route": "straight",
+      "variant": "security"
+    },
+    {
+      "id": "flow_splits_train",
+      "from": "clean_splits",
+      "to": "model_train",
+      "label": "base train split",
+      "classification": "clean training",
+      "variant": "emphasis"
+    },
+    {
+      "id": "flow_review_train",
+      "from": "reviewed_feedback",
+      "to": "model_train",
+      "label": "reviewed corrections",
+      "classification": "verified feedback",
+      "variant": "emphasis"
+    },
+    {
+      "id": "flow_train_eval",
+      "from": "model_train",
+      "to": "eval_gates",
+      "label": "score held-out test",
+      "classification": "test scores",
+      "variant": "default"
+    },
+    {
+      "id": "flow_eval_registry",
+      "from": "eval_gates",
+      "to": "mlflow_candidate",
+      "label": "gate verdict",
+      "classification": "passing model",
+      "labelAt": [745, 200],
+      "variant": "emphasis"
+    },
+    {
+      "id": "flow_registry_serve",
+      "from": "mlflow_candidate",
+      "to": "serving_model",
+      "label": "champion export",
+      "classification": "serving artifact",
+      "variant": "emphasis"
+    },
+    {
+      "id": "flow_serve_log",
+      "from": "serving_model",
+      "to": "predictions_log",
+      "label": "log predictions",
+      "classification": "live inferences",
+      "labelAt": [960, 200],
+      "variant": "default"
+    },
+    {
+      "id": "flow_log_drift",
+      "from": "predictions_log",
+      "to": "drift_report",
+      "label": "windowed comparisons",
+      "classification": "traffic audit",
+      "labelAt": [960, 428],
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Versioned Lineage with DVC",
+      "items": [
+        "Raw HuggingFace IMDB dataset and processed splits are tracked by DVC",
+        "Deterministic pipeline hashes guarantee exact artifact reproducibility",
+        "DVC remote stores versioned data and models without git bloat"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Continuous Feedback Fusion",
+      "items": [
+        "Real-world prediction corrections are isolated until human review",
+        "Approved feedback exports to versioned Parquet with full lineage",
+        "Retraining automatically merges reviewed data with the base corpus"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Production Drift Surveillance",
+      "items": [
+        "Inferences are asynchronously logged to PostgreSQL with confidence",
+        "Evidently tests recent text features against the held-out reference",
+        "Prometheus gauges export drift share to trigger automated alerts"
+      ]
+    }
+  ]
+}
